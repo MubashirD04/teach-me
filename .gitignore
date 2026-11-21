@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+
+# Teaching Harness runtime state (per-learner, created when the plugin runs)
+.teach/
+
+# Claude Code local settings (machine-specific)
+.claude/settings.local.json
+
+# OS / editor
+.DS_Store
+.vscode/
+
+# Learner practice files (the harness is used here while learning; keep them out of the repo)
+test.c
+a.out
+*.o
+playground/

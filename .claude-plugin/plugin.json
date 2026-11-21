@@ -1,0 +1,6 @@
+{
+  "name": "teaching-harness",
+  "version": "0.1.0",
+  "description": "Turns Claude Code into a software-development teacher: enforced learn mode, hint ladder, learner profile, and comprehension checks.",
+  "author": { "name": "Teaching Harness" }
+}

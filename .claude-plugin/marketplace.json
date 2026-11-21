@@ -1,0 +1,11 @@
+{
+  "name": "teaching-harness-dev",
+  "owner": { "name": "Teaching Harness" },
+  "plugins": [
+    {
+      "name": "teaching-harness",
+      "source": "./",
+      "description": "Software-development teacher harness: enforced learn mode, hint ladder, learner profile."
+    }
+  ]
+}

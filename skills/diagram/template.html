@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DIAGRAM TITLE</title>
+<style>
+  :root { --bg:#fafaf9; --fg:#1c1917; --muted:#57534e; --card:#fff; --line:#a8a29e; --accent:#2563eb; --done:#15803d; --warn:#b45309; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#1c1917; --fg:#fafaf9; --muted:#a8a29e; --card:#292524; --line:#78716c; --accent:#60a5fa; --done:#4ade80; --warn:#fbbf24; }
+  }
+  body { margin:0; font:16px/1.5 system-ui,sans-serif; background:var(--bg); color:var(--fg); }
+  main { max-width:860px; margin:0 auto; padding:24px 16px 48px; }
+  h1 { font-size:1.4rem; margin:0 0 4px; } .sub { color:var(--muted); margin:0 0 20px; }
+  svg { width:100%; height:auto; background:var(--card); border:1px solid var(--line); border-radius:12px; }
+  .node rect { fill:var(--card); stroke:var(--line); stroke-width:2; rx:10; }
+  .node text { fill:var(--fg); font:14px system-ui,sans-serif; text-anchor:middle; }
+  .node .small { fill:var(--muted); font-size:12px; }
+  .node.active rect { stroke:var(--accent); stroke-width:4; }
+  .node.done rect { stroke:var(--done); }
+  .edge { stroke:var(--line); stroke-width:2; fill:none; marker-end:url(#arrow); }
+  .edge.active { stroke:var(--accent); stroke-width:3; } .edge.done { stroke:var(--done); }
+  .caption { margin:16px 0 8px; padding:12px 16px; border-left:4px solid var(--accent); background:var(--card); border-radius:0 8px 8px 0; min-height:3em; }
+  .controls { display:flex; gap:8px; align-items:center; }
+  button { font:inherit; padding:8px 16px; border-radius:8px; border:1px solid var(--line); background:var(--card); color:var(--fg); cursor:pointer; }
+  button:hover:not(:disabled) { border-color:var(--accent); } button:disabled { opacity:.4; cursor:default; }
+  button:focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
+  .count { color:var(--muted); margin-left:auto; }
+  .try { margin-top:24px; padding:12px 16px; border:1px dashed var(--warn); border-radius:8px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>DIAGRAM TITLE</h1>
+  <p class="sub">One-line description of the idea this shows.</p>
+
+  <!-- Replace the nodes/edges below. data-step="N" lights an element up at step N (and marks it done afterwards). -->
+  <svg viewBox="0 0 800 220" role="img" aria-label="DIAGRAM TITLE">
+    <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#a8a29e"/></marker></defs>
+    <g class="node" data-step="1"><rect x="30" y="70" width="170" height="80"/><text x="115" y="105">Input</text><text class="small" x="115" y="128">what comes in</text></g>
+    <path class="edge" data-step="2" d="M200 110 H310"/>
+    <g class="node" data-step="2"><rect x="315" y="70" width="170" height="80"/><text x="400" y="105">Process</text><text class="small" x="400" y="128">what happens</text></g>
+    <path class="edge" data-step="3" d="M485 110 H595"/>
+    <g class="node" data-step="3"><rect x="600" y="70" width="170" height="80"/><text x="685" y="105">Output</text><text class="small" x="685" y="128">what comes out</text></g>
+  </svg>
+
+  <div class="caption" id="caption" aria-live="polite"></div>
+  <div class="controls">
+    <button id="prev">&larr; Back</button><button id="next">Next &rarr;</button><button id="reset">Reset</button>
+    <span class="count" id="count"></span>
+  </div>
+
+  <p class="try"><strong>Try this:</strong> a concrete thing to run or change in your own code to see this happen.</p>
+</main>
+<script>
+  // One sentence per step. Index 0 is the intro shown before any step is active.
+  const captions = [
+    "Press Next to step through.",
+    "Step 1: explain what happens here, with a concrete value.",
+    "Step 2: explain what happens here, with a concrete value.",
+    "Step 3: explain what happens here, with a concrete value."
+  ];
+  let step = 0; const last = captions.length - 1;
+  const $ = id => document.getElementById(id);
+  function render() {
+    document.querySelectorAll("[data-step]").forEach(el => {
+      const n = +el.dataset.step;
+      el.classList.toggle("active", n === step);
+      el.classList.toggle("done", n < step);
+    });
+    $("caption").textContent = captions[step];
+    $("count").textContent = step === 0 ? "" : `Step ${step} of ${last}`;
+    $("prev").disabled = step === 0; $("next").disabled = step === last;
+  }
+  $("next").onclick = () => { if (step < last) { step++; render(); } };
+  $("prev").onclick = () => { if (step > 0) { step--; render(); } };
+  $("reset").onclick = () => { step = 0; render(); };
+  document.addEventListener("keydown", e => { if (e.key === "ArrowRight") $("next").click(); if (e.key === "ArrowLeft") $("prev").click(); });
+  render();
+</script>
+</body>
+</html>
