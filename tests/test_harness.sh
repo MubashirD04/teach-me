@@ -34,7 +34,7 @@ T hint | grep -q HOLD && ok "level 5 held" || bad "level 5 held"
 T hint --force | grep -q "LEVEL 5" && ok "force allows 5" || bad "force allows 5"
 T concept "loops" fail >/dev/null; T concept "loops" pass >/dev/null
 T profile | grep -q '"loops"' && ok "concept recorded" || bad "concept recorded"
-TEACH_HOME="$(mktemp -d)" python3 "$ROOT/hooks/session_start.py" | grep -q "use the .roadmap. skill directly" && ok "session start routes goal to roadmap" || bad "session start routes goal to roadmap"
+TEACH_HOME="$(mktemp -d)" python3 "$ROOT/hooks/session_start.py" | grep -q "start the .roadmap. skill immediately" && ok "session start routes goal to roadmap" || bad "session start routes goal to roadmap"
 python3 "$ROOT/hooks/session_start.py" | grep -q "TEACHING HARNESS" && ok "session_start context" || bad "session_start context"
 T mode learn >/dev/null
 P="$(T diagram "Fork and Exec")"; [ "$P" = ".teach/diagrams/fork-and-exec.html" ] && ok "diagram path" || bad "diagram path ($P)"
@@ -71,7 +71,7 @@ T roadmap add --title "Prompt and echo" --outcome "your program shows a prompt a
 T roadmap add --title "Prompt and echo" --outcome "your program shows a prompt and repeats a line back" --done-when "run it, see a dollar prompt, type hello, see you typed: hello" --concepts "stdin | where keyboard input arrives; getline | reads a whole line of text" --first-step "think about how a prompt appears on screen and do some reading" | grep -q "bring something back" && ok "rejects first step with nothing to bring back" || bad "rejects first step with nothing to bring back"
 T roadmap add --title "Prompt and echo" --outcome "your program shows a prompt and repeats a line back" --done-when "run it, see a dollar prompt, type hello, see you typed: hello" --concepts "stdin | where keyboard input arrives; getline | reads a whole line of text" --first-step "write getline(&l,&n,stdin); then run it" | grep -q "ERROR" && ok "rejects code in first step" || bad "rejects code in first step"
 T roadmap add --title "Prompt and echo" --outcome "your program shows a prompt and repeats a line back" --done-when "run it, see a dollar prompt, type hello, see you typed: hello" --concepts "stdin | where keyboard input arrives; getline | reads a whole line of text" --look-up "man 3 getline" --first-step "predict whether a prompt without a newline shows at once, then test it and tell me what you saw" | grep -q "added milestone 1" && ok "add milestone 1" || bad "add milestone 1"
-T roadmap add --title "Run one command" --outcome "type a program name and it runs" --done-when "type ls and see the listing, then the prompt returns" --concepts "process | a running program; exec | replaces the running program with another" --first-step "work out what would happen to your shell program if it ran ls inside itself. What do you expect to see?" | grep -q "added milestone 2" && ok "add milestone 2" || bad "add milestone 2"
+T roadmap add --title "Run one command" --outcome "type a program name and it runs" --done-when "type ls and see the listing, then the prompt returns" --concepts "process | a running program; exec | replaces the running program with another" --look-up "man 2 execve" --first-step "work out what would happen to your shell program if it ran ls inside itself. What do you expect to see?" | grep -q "added milestone 2" && ok "add milestone 2" || bad "add milestone 2"
 [ -f "$CLAUDE_PROJECT_DIR/.teach/ROADMAP.md" ] && grep -q "Prompt and echo" "$CLAUDE_PROJECT_DIR/.teach/ROADMAP.md" && ok "ROADMAP.md rendered" || bad "ROADMAP.md rendered"
 T roadmap start 1 | grep -q "milestone 1 active" && ok "start 1" || bad "start 1"
 T status | grep -q "M1: Prompt and echo" && ok "start sets task" || bad "start sets task"
@@ -93,4 +93,48 @@ denied '{"tool_name":"Bash","tool_input":{"command":"python3 teach.py status > a
 denied '{"tool_name":"Bash","tool_input":{"command":"python3 other.py hello"}}' && bad "plain python not blocked by teach rule" || ok "plain python not blocked by teach rule"
 T mode off >/dev/null
 grep -q "^> \*\*First step" "$CLAUDE_PROJECT_DIR/.teach/ROADMAP.md" && ok "ROADMAP.md first step is its own callout" || bad "ROADMAP.md first step callout"
+# routing must not depend on onboarding state, and the reminder must be imperative
+TH="$(mktemp -d)"; PD="$(mktemp -d)"
+CLAUDE_PROJECT_DIR="$PD" TEACH_HOME="$TH" python3 "$ROOT/bin/teach.py" set onboarded true >/dev/null
+CLAUDE_PROJECT_DIR="$PD" TEACH_HOME="$TH" python3 "$ROOT/hooks/session_start.py" | grep -q "start the .roadmap. skill immediately" && ok "routing applies even when onboarded" || bad "routing when onboarded"
+CLAUDE_PROJECT_DIR="$PD" TEACH_HOME="$TH" python3 "$ROOT/bin/teach.py" mode learn >/dev/null
+CLAUDE_PROJECT_DIR="$PD" TEACH_HOME="$TH" python3 "$ROOT/hooks/prompt_reminder.py" | grep -q "do NOT ask whether they want a plan" && ok "reminder: start roadmap, don't ask" || bad "reminder: start roadmap"
+T mode status | grep -q "^mode:" && T mode | grep -q "profile file:" && ok "mode status / bare mode show status" || bad "mode status"
+T mode bogus | grep -q usage && ok "mode rejects junk" || bad "mode rejects junk"
+CLAUDE_PROJECT_DIR="$PD" TEACH_HOME="$TH" python3 "$ROOT/hooks/prompt_reminder.py" | grep -q "AskUserQuestion" && ok "reminder: scoping via single multiple-choice" || bad "reminder: scoping via multiple choice"
+grep -q "Never bundle" "$ROOT/skills/roadmap/SKILL.md" && grep -q "bare letters" "$ROOT/skills/roadmap/SKILL.md" && ok "skill: no bundling, no letters" || bad "skill: no bundling"
+T roadmap add --title "No lookup here" --outcome "something that is long enough to pass" --done-when "type ls and see the listing, then a prompt" --concepts "thing | a thing that exists in the code" --first-step "think about it carefully and tell me what you decide" | grep -q "look-up" && ok "add requires look-up" || bad "add requires look-up"
+T roadmap init "lint test" --force >/dev/null
+T roadmap add --title "Vague milestone" --outcome "something that is long enough to pass" --done-when "it works correctly when you try it out" --concepts "a | first concept described well; b | second concept described well; c | third concept described well; d | fourth concept described well; e | fifth concept described well" --look-up "man 3 x" --first-step "tell me which numbers stdin and stdout use as descriptors please" >/dev/null
+L="$(T roadmap lint)"
+echo "$L" | grep -q "no concrete example" && ok "lint: vague done-when" || bad "lint: vague done-when"
+echo "$L" | grep -q "too many" && ok "lint: too many concepts" || bad "lint: too many concepts"
+echo "$L" | grep -q "recalling a fact" && ok "lint: recall first step" || bad "lint: recall first step"
+T roadmap init "clean" --force >/dev/null
+T roadmap add --title "Good milestone" --outcome "type a line and see it repeated" --done-when "run it, type hello, see you typed: hello" --concepts "stdin | where keyboard input arrives" --look-up "man 3 getline" --first-step "predict whether a prompt without a newline shows at once, then try it and tell me what you saw" >/dev/null
+T roadmap lint | grep -q "no warnings" && ok "lint: clean milestone passes" || bad "lint: clean milestone passes"
+grep -qi "never ask the learner to write" "$ROOT/hooks/prompt_reminder.py" && ok "reminder: plan quality is the agent's job" || bad "reminder: plan quality"
+grep -q "Plan quality is YOUR job" "$ROOT/skills/roadmap/SKILL.md" && ok "skill: plan quality is the agent's job" || bad "skill: plan quality"
+A="$ROOT/agents/roadmap-reviewer.md"
+head -1 "$A" | grep -q '^---$' && grep -q '^name: roadmap-reviewer$' "$A" && grep -q '^description: ' "$A" && ok "reviewer agent frontmatter" || bad "reviewer agent frontmatter"
+grep '^tools:' "$A" | grep -qiE 'write|edit|bash' && bad "reviewer must be read-only" || ok "reviewer is read-only (no Write/Edit/Bash)"
+grep -q "roadmap-reviewer" "$ROOT/skills/roadmap/SKILL.md" && ok "roadmap skill calls the reviewer" || bad "roadmap skill calls the reviewer"
+python3 -c "import json;d=json.load(open('$ROOT/.claude-plugin/plugin.json'));assert 'version' not in d" && ok "no pinned version (updates track commits)" || bad "no pinned version"
+# ---- test-out
+T roadmap init "testout demo" --force >/dev/null
+T roadmap add --title "Alpha topic" --outcome "something that is long enough to pass" --done-when "run it, type hello, see you typed: hello" --concepts "alphaone | first concept described well; alphatwo | second concept described well" --look-up "man 3 x" --first-step "predict what happens when you run it, then try it and tell me what you saw" >/dev/null
+T roadmap add --title "Beta topic" --outcome "something that is long enough to pass" --done-when "run it, type hello, see you typed: hello" --concepts "betaone | first concept described well" --look-up "man 3 y" --first-step "predict what happens when you run it, then try it and tell me what you saw" >/dev/null
+T quiz start "M1 test-out" --testout | grep -q "TEST-OUT" && ok "quiz --testout starts" || bad "quiz --testout starts"
+T quiz answer fail alphaone | grep -q "difficulty 3" && ok "test-out difficulty floor is 3" || bad "test-out floor"
+T roadmap skip 1 --demonstrated "ran it" | grep -q "NOT YET" && ok "skip refused without evidence" || bad "skip refused without evidence"
+T quiz answer pass alphaone >/dev/null; T quiz answer pass alphatwo >/dev/null
+T roadmap skip 1 | grep -q "demonstrated" && ok "skip needs --demonstrated" || bad "skip needs --demonstrated"
+T roadmap skip 1 --demonstrated "ran ./app, typed hello, saw the echo" | grep -q "tested out" && ok "skip succeeds with evidence + demo" || bad "skip succeeds"
+T roadmap status | grep -q "\[~\] 1. Alpha topic" && T roadmap status | grep -q "1 tested out" && ok "status shows tested-out" || bad "status shows tested-out"
+grep -q "Tested out" "$CLAUDE_PROJECT_DIR/.teach/ROADMAP.md" && ok "ROADMAP.md records test-out" || bad "ROADMAP.md records test-out"
+T roadmap skip 1 --demonstrated "again" | grep -q "already skipped" && ok "cannot skip twice" || bad "cannot skip twice"
+T roadmap done 1 | grep -q "already skipped" && ok "cannot done a skipped one" || bad "done on skipped"
+T roadmap skip 2 --force --demonstrated "insisted" | grep -q "tested out" && ok "force skip works" || bad "force skip"
+python3 -c "import json;m=json.load(open('$CLAUDE_PROJECT_DIR/.teach/roadmap.json'))['milestones'];assert m[1]['tested_out']['forced'] and not m[0]['tested_out']['forced']" && ok "forced flag recorded" || bad "forced flag recorded"
+T quiz end >/dev/null
 echo "---- $pass passed, $fail failed"; [ $fail -eq 0 ]

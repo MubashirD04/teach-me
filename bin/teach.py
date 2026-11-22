@@ -2,7 +2,7 @@
 """Teaching Harness CLI. Used by slash commands, skills, and by you directly.
 
   teach.py status
-  teach.py mode learn|pair|review|off
+  teach.py mode [status]|learn|pair|review|off
   teach.py task "what the learner is working on"
   teach.py attempt                 # record that the learner tried something
   teach.py hint [--force]          # escalate one rung of the ladder (gated by attempts)
@@ -12,10 +12,10 @@
   teach.py set level|onboarded VALUE
   teach.py profile                 # print the learner profile
   teach.py quiz pick [N]           # rank concepts worth quizzing (weak / stale first)
-  teach.py quiz start TOPIC [--mc] # begin a quiz (--mc = multiple choice)
+  teach.py quiz start TOPIC [--mc|--testout] # begin a quiz (--mc = multiple choice; --testout = harder, for skipping a milestone)
   teach.py quiz answer pass|fail|partial [CONCEPT]   # record the FIRST attempt at a question
   teach.py quiz status | end
-  teach.py roadmap init "goal" | add ... | edit N ... | remove N | status | start N | done N | park "idea" | parked
+  teach.py roadmap init "goal" | add ... | edit N ... | remove N | status | start N | done N | skip N --demonstrated "..." | lint | park "idea" | parked
   teach.py diagram "title"          # safe path for an HTML visual aid under .teach/diagrams/
 """
 import sys, json
@@ -27,6 +27,7 @@ from roadmap import cmd_roadmap, load_roadmap, active_milestone, cname
 def cmd_status(_):
     s, p = load_state(), load_learner()
     print(f"mode: {s['mode']}")
+    print(f"profile file: {home_dir() / 'learner.json'}  (onboarded: {p['onboarded']})")
     print(f"task: {s['task'] or '(none)'}")
     print(f"hint level: {s['hint_level']}/5   attempts this task: {s['attempts']}")
     print(f"goals: {', '.join(p['goals']) or '(none yet)'}")
@@ -36,7 +37,9 @@ def cmd_status(_):
 
 
 def cmd_mode(a):
-    if not a or a[0] not in MODES:
+    if not a or a[0] == "status":
+        return cmd_status(a)
+    if a[0] not in MODES:
         print(f"usage: mode {'|'.join(MODES)}"); return 1
     s = load_state(); s["mode"] = a[0]; save_state(s)
     print(f"mode set to {a[0]}")
@@ -151,18 +154,22 @@ def cmd_quiz(a):
         for name, c in ranked:
             print(f"{'  ' if am else ''}{name}  (+{c['pass']}/-{c['fail']}, hints {c['hints_needed']}, last seen {days_since(c['last_seen']):.0f}d ago)")
     elif sub == "start":
-        mc = "--mc" in rest
-        topic = " ".join(x for x in rest if x != "--mc").strip()
+        mc, testout = "--mc" in rest, "--testout" in rest
+        topic = " ".join(x for x in rest if x not in ("--mc", "--testout")).strip()
         if not topic:
             print("usage: quiz start TOPIC [--mc]"); return 1
         lvl = START_LEVEL.get(p["level"], 2)
         c = p["concepts"].get(topic)
         if c and c["fail"] > c["pass"]:
             lvl = max(1, lvl - 1)
+        if testout:
+            lvl = max(3, lvl)
         s["quiz"] = {"topic": topic, "format": "multiple-choice" if mc else "open-ended", "difficulty": lvl,
+                     "floor": 3 if testout else 1, "testout": testout,
                      "asked": 0, "streak": 0, "results": [], "started": now()}
         save_state(s)
-        print(f"quiz started: {topic} [{s['quiz']['format']}] difficulty {lvl}: {DIFFICULTY[lvl]}")
+        print(f"quiz started: {topic} [{s['quiz']['format']}] difficulty {lvl}: {DIFFICULTY[lvl]}"
+              + (" | TEST-OUT: difficulty never drops below 3, one question per milestone concept, no hints, no recall questions" if testout else ""))
     elif sub == "answer":
         if not q:
             print("no active quiz; run `quiz start TOPIC` first"); return 1
@@ -179,7 +186,7 @@ def cmd_quiz(a):
                 q["difficulty"] += 1; q["streak"] = 0
         else:
             q["streak"] = 0
-            if res == "fail" and q["difficulty"] > 1:
+            if res == "fail" and q["difficulty"] > q.get("floor", 1):
                 q["difficulty"] -= 1
         save_state(s)
         d = q["difficulty"]

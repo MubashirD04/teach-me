@@ -13,6 +13,7 @@ A Claude Code plugin that makes the agent behave like a software-development tea
 | Diagrams | `skills/diagram`, `/teaching-harness:diagram` | Builds a self-contained HTML visual aid (step-through template) in `.teach/diagrams/`. |
 | Quiz | `skills/quiz`, `/teaching-harness:quiz`, `teach.py quiz` | One question at a time, weak/stale concepts first, adaptive difficulty, results recorded to the profile. |
 | Roadmap | `skills/roadmap`, `/teaching-harness:roadmap`, `teach.py roadmap` | Beginner-friendly milestone plan for a project goal: outcomes, 'done when', concepts shown from the start, first step; persisted in `.teach/ROADMAP.md`; keeps you on the current milestone and parks tangents. |
+| Reviewer agent | `agents/roadmap-reviewer.md` | Read-only subagent (Read/Grep/Glob) that reviews a draft roadmap against a rubric before the learner sees it. Addressed as `teaching-harness:roadmap-reviewer`. |
 | Commands | `/teaching-harness:mode`, `:hint`, `:progress`, `:diagram`, `:quiz`, `:roadmap` | Switch modes, ask for a hint, see progress. |
 
 Modes: `learn` (agent can't write your code), `pair` (you write key parts), `review` (agent writes, you explain it back), `off`.

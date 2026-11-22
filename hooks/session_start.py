@@ -19,9 +19,10 @@ if s["task"]:
 rm = load_roadmap()
 if rm:
     lines.append(summary_line(rm) + " Read it with `teach.py roadmap status`; the learner can read .teach/ROADMAP.md.")
+if not rm:
+    lines.append("NO ROADMAP YET. If the learner's message states a multi-step project goal (e.g. 'I want to build a shell'), "
+                 "start the `roadmap` skill immediately: ask its first scoping question. Do NOT give a general map first and do NOT ask whether they want a plan.")
 lines.append("Load the `teach` skill and follow it." + ("" if p["onboarded"] else
-             " The learner is NOT onboarded yet. If their first message already states a concrete project goal "
-             "(e.g. 'I want to build a shell'), skip onboarding and use the `roadmap` skill directly - it covers level and scope. "
-             "Otherwise begin with the `onboard` skill."))
+             " The learner is NOT onboarded yet: unless they state a project goal (then use `roadmap`), begin with the `onboard` skill."))
 print(json.dumps({"hookSpecificOutput": {"hookEventName": "SessionStart",
                                           "additionalContext": "\n".join(lines)}}))

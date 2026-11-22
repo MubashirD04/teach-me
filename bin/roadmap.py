@@ -6,14 +6,14 @@ Design rules (enforced here, not just requested in a prompt):
     description), first_step, optional look_up
   * concepts are NAMED and DESCRIBED ("what it is"), never explained as a recipe ("how to combine them")
   * first_step must be an action or question, not code
-  * a milestone can only be closed once the learner has passed checks on at least half its concepts
+  * a milestone can only be closed once the learner has passed a check on at least one of its concepts
 """
 import argparse, math, re
 from teachlib import *
 from teachlib import _load, _save
 
 ASK_BACK = re.compile(r"\?|\b(tell me|show me|describe|write down|report back|bring back|let me know)\b", re.I)
-ICON = {"done": "[x]", "active": "[>]", "todo": "[ ]"}
+ICON = {"done": "[x]", "skipped": "[~]", "active": "[>]", "todo": "[ ]"}
 
 
 # ---------------------------------------------------------------- storage / helpers
@@ -29,17 +29,19 @@ def save_roadmap(r):
 def cname(c):  return c.split("|", 1)[0].strip()
 def cdesc(c):  return c.split("|", 1)[1].strip() if "|" in c else ""
 def active_milestone(r): return next((m for m in r["milestones"] if m["status"] == "active"), None)
-def n_done(r): return sum(1 for m in r["milestones"] if m["status"] == "done")
+def n_done(r): return sum(1 for m in r["milestones"] if m["status"] in ("done", "skipped"))
+def n_skipped(r): return sum(1 for m in r["milestones"] if m["status"] == "skipped")
+def _tested(r): return f" ({n_skipped(r)} tested out)" if n_skipped(r) else ""
 
 
 def summary_line(r):
     m, total = active_milestone(r), len(r["milestones"])
     cur = f"current: {m['id']}. {m['title']}" if m else "no active milestone"
-    return f"Roadmap '{r['goal']}': {n_done(r)}/{total} milestones done, {cur}."
+    return f"Roadmap '{r['goal']}': {n_done(r)}/{total} milestones done{_tested(r)}, {cur}."
 
 
 def render_md(r):
-    out = [f"# Roadmap: {r['goal']}", "", f"Progress: {n_done(r)}/{len(r['milestones'])} milestones done", ""]
+    out = [f"# Roadmap: {r['goal']}", "", f"Progress: {n_done(r)}/{len(r['milestones'])} milestones done{_tested(r)}", ""]
     for m in r["milestones"]:
         out += [f"## {ICON[m['status']]} {m['id']}. {m['title']}", "",
                 f"**Outcome:** {m['outcome']}", "", f"**Done when:** {m['done_when']}", "", "**Concepts you'll meet:**"]
@@ -47,6 +49,9 @@ def render_md(r):
         if m.get("look_up"):
             out += ["", "**Look up:** " + ", ".join(f"`{x}`" for x in m["look_up"])]
         out += ["", f"> **First step:** {m['first_step']}", ""]
+        if m["status"] == "skipped":
+            t = m.get("tested_out", {})
+            out += [f"*Tested out{' (forced)' if t.get('forced') else ''}: showed {t.get('demonstrated') or 'n/a'}.*", ""]
     if r.get("parked"):
         out += ["## Parked ideas (for later)", ""] + [f"- {p['idea']}" for p in r["parked"]] + [""]
     return "\n".join(out)
@@ -105,6 +110,26 @@ def _normalise(ns):
     return out
 
 
+
+CONCRETE = re.compile(r"[`'\"/:]|\d|\./|\s-{1,2}\w")
+RECALL = re.compile(r"\b(which|what)\s+(numbers?|flags?|arguments?|names?|header|function|options?|macros?)\b", re.I)
+LOOKUP_PHRASE = re.compile(r"\b(look up|man |read |check the docs)", re.I)
+
+
+def lint(r):
+    """Quality warnings a beginner would hit. Returns a list of strings."""
+    w = []
+    for m in r["milestones"]:
+        tag = f"M{m['id']} '{m['title']}'"
+        if not CONCRETE.search(m["done_when"]) or len(m["done_when"]) < 30:
+            w.append(f"{tag}: done-when has no concrete example - name exactly what they type and what they should see")
+        if len(m["concepts"]) > 4:
+            w.append(f"{tag}: {len(m['concepts'])} concepts is too many for one milestone - split it")
+        if RECALL.search(m["first_step"]) and not LOOKUP_PHRASE.search(m["first_step"]):
+            w.append(f"{tag}: first step looks like recalling a fact they haven't met - make it a look-up (name the man page) or a reasoning/prediction")
+    return w
+
+
 # ---------------------------------------------------------------- commands
 def _start(r, n):
     for m in r["milestones"]:
@@ -119,7 +144,7 @@ def _start(r, n):
 
 def _status(r):
     print(f"GOAL: {r['goal']}")
-    print(f"PROGRESS: {n_done(r)}/{len(r['milestones'])} done")
+    print(f"PROGRESS: {n_done(r)}/{len(r['milestones'])} done{_tested(r)}")
     for m in r["milestones"]:
         print(f" {ICON[m['status']]} {m['id']}. {m['title']}")
     m = active_milestone(r)
@@ -165,11 +190,12 @@ def cmd_roadmap(a):
             _status(r)
         elif sub == "add":
             ns = _normalise(_parse_fields(rest, required=True))
-            ns.setdefault("look_up", [])
+            if not ns.get("look_up"):
+                raise ValueError("--look-up needs at least one real reference (e.g. 'man 3 fgets; K&R 7.6') so the learner can find things themselves")
             ns.update(id=len(r["milestones"]) + 1, status="todo")
             r["milestones"].append(ns); save_roadmap(r)
             print(f"added milestone {ns['id']}: {ns['title']}")
-        elif sub in ("edit", "remove", "start", "done"):
+        elif sub in ("edit", "remove", "start", "done", "skip"):
             if not rest or not rest[0].isdigit() or not (1 <= int(rest[0]) <= len(r["milestones"])):
                 print(f"usage: roadmap {sub} N (1-{len(r['milestones'])})"); return 1
             n, rest = int(rest[0]), rest[1:]
@@ -182,13 +208,42 @@ def cmd_roadmap(a):
                 save_roadmap(r); print(f"removed milestone {n}; renumbered")
             elif sub == "start":
                 m = _start(r, n); print(f"milestone {n} active: {m['title']}. Hint ladder reset. First step: {m['first_step']}")
+            elif sub == "skip":
+                m = r["milestones"][n - 1]
+                if m["status"] in ("done", "skipped"):
+                    print(f"milestone {n} is already {m['status']}"); return 1
+                ap = _Parser(prog="roadmap skip", add_help=False)
+                ap.add_argument("--demonstrated", default=""); ap.add_argument("--force", action="store_true")
+                a2 = ap.parse_args(rest)
+                st = load_state()
+                results = list((st.get("quiz") or {}).get("results", [])) + [x for h in st["quiz_history"] for x in h["results"]]
+                names = [cname(c) for c in m["concepts"]]
+                ok = {nm for nm in names if any(x["concept"] == nm and x["result"] == "pass" and x["difficulty"] >= 3 for x in results)}
+                gaps = [nm for nm in names if nm not in ok]
+                demo = a2.demonstrated.strip()
+                if (gaps or not demo) and not a2.force:
+                    msg = []
+                    if gaps:
+                        msg.append(f"no first-attempt pass at difficulty >= 3 yet for: {', '.join(gaps)} "
+                                   f"(passed: {', '.join(sorted(ok)) or 'none'}). Run `quiz start \"M{n} test-out\" --testout` and ask one question per gap concept, no hints.")
+                    if not demo:
+                        msg.append("--demonstrated \"<what the learner showed>\" is required: have them run or explain their own work against the milestone's done-when.")
+                    print("NOT YET: " + " ".join(msg) + " (--force only if the learner insists.)"); return 1
+                m["status"] = "skipped"
+                m["tested_out"] = {"at": now(), "passed": sorted(ok), "demonstrated": demo, "forced": bool(gaps or not demo)}
+                save_roadmap(r)
+                nxt = next((x for x in r["milestones"] if x["status"] == "todo"), None)
+                print(f"milestone {n} tested out ({n_done(r)}/{len(r['milestones'])} done)." +
+                      (f" Next: {nxt['id']}. {nxt['title']} - `roadmap start {nxt['id']}` when the learner is ready." if nxt else " The roadmap is complete!"))
             else:  # done
                 m, p = r["milestones"][n - 1], load_learner()
+                if m["status"] in ("done", "skipped"):
+                    print(f"milestone {n} is already {m['status']}"); return 1
                 passed = [cname(c) for c in m["concepts"] if p["concepts"].get(cname(c), {}).get("pass", 0) >= 1]
-                need = math.ceil(len(m["concepts"]) / 2)
+                need = 1
                 if len(passed) < need and "--force" not in rest:
                     todo = [cname(c) for c in m["concepts"] if cname(c) not in passed]
-                    print(f"NOT YET: {len(passed)}/{len(m['concepts'])} concepts checked (need {need}). "
+                    print(f"NOT YET: no concept of this milestone has a recorded pass. "
                           f"Quiz or check the learner on: {', '.join(todo)}. (--force only if the learner insists.)")
                     return 1
                 m["status"] = "done"; m["done_at"] = now(); m["forced"] = len(passed) < need
@@ -196,6 +251,10 @@ def cmd_roadmap(a):
                 nxt = next((x for x in r["milestones"] if x["status"] == "todo"), None)
                 print(f"milestone {n} done ({n_done(r)}/{len(r['milestones'])})." +
                       (f" Next: {nxt['id']}. {nxt['title']} - `roadmap start {nxt['id']}` when the learner is ready." if nxt else " The roadmap is complete!"))
+        elif sub == "lint":
+            w = lint(r)
+            print("\n".join(f"WARN {x}" for x in w) if w else "lint: no warnings")
+            if w: print(f"{len(w)} warning(s). Fix each with `roadmap edit N ...` (or split the milestone), then lint again.")
         elif sub == "park":
             idea = " ".join(rest).strip()
             if not idea:
@@ -204,6 +263,6 @@ def cmd_roadmap(a):
         elif sub == "parked":
             print("\n".join(f"- {p['idea']}" for p in r["parked"]) or "(nothing parked)")
         else:
-            print("usage: roadmap init|add|edit|remove|status|start|done|park|parked|render"); return 1
+            print("usage: roadmap init|add|edit|remove|status|start|done|skip|park|parked|lint|render"); return 1
     except ValueError as e:
         print(f"ERROR: {e}"); return 1

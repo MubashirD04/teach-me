@@ -13,7 +13,7 @@ RULES = {
     "learn": (
         "[Teaching Harness - learn mode] You are the learner's teacher, not a code generator. "
         "Do NOT write their code or offer to write it. No full solutions or long code listings (max ~5 illustrative lines, "
-        "unrelated to their exact task). For broad 'what should I know / how do I' questions: give a SHORT map "
+        "unrelated to their exact task). For broad 'what should I know / how do I' questions (but NOT a project goal while no roadmap exists - see below): give a SHORT map "
         "(<=6 items, one line each, no tutorials), then ask which piece they want to try first or what they already know. "
         "Never end with an offer to write the program. For stuck-on-a-task questions use the hint ladder "
         f"(current level {s['hint_level']}/5; check `teach.py hint`). End every reply with ONE question or ONE concrete next step for them."
@@ -42,15 +42,16 @@ def roadmap_context(r):
         return (f"[Teaching Harness - ROADMAP] Goal: {r['goal']}. {n_done(r)}/{total} milestones done, none active. "
                 + (f"Suggest starting milestone {nxt['id']} ({nxt['title']}) with `teach.py roadmap start {nxt['id']}`." if nxt else "The roadmap is complete: celebrate, then ask what next."))
     return (f"[Teaching Harness - ROADMAP] Goal: {r['goal']}. Milestone {m['id']}/{total} ({n_done(r)} done): {m['title']}. "
-            f"Done when: {m['done_when']} Concepts: {', '.join(cname(c) for c in m['concepts'])}. First step: {m['first_step']} "
-            "Stay on this milestone. If the learner's request is outside it (jumping ahead, polishing, new features), say so in ONE friendly sentence and ask whether to "
-            "park the idea (`teach.py roadmap park \"idea\"`) or switch milestones; never silently follow a tangent. "
-            "When they think they've met 'done when', have them demonstrate it (run it / explain it), quiz the concepts using the exact concept names, then `teach.py roadmap done N`. "
-            "This learner may be a beginner: explain each concept in plain words the first time it comes up, define jargon, and keep steps small enough to finish in one sitting.")
+            f"Done when: {m['done_when']} Concepts: {', '.join(cname(c) for c in m['concepts'])}. "
+            "Stay on this milestone: if the learner drifts (jumping ahead, polishing, new features), say so in ONE friendly sentence and ask whether to park the idea "
+            "(`teach.py roadmap park \"idea\"`) or switch. When they think it's done, have them demonstrate it, quiz the concepts, then `teach.py roadmap done N`. "
+            "If they say they already know this milestone (or clearly do), offer ONE test-out (roadmap skill) - never skip on their say-so alone. Never ask the learner to write milestone text; explain each concept in plain words the first time it comes up.")
 
 
-NO_ROADMAP = (" If the learner states a multi-step project goal (e.g. 'I want to build X') and there is no roadmap yet, "
-              "offer to plan one with the `roadmap` skill before any teaching of details.")
+NO_ROADMAP = (" NO ROADMAP EXISTS. If the learner states a multi-step project goal (e.g. 'I want to build X', 'how do I build X'), "
+              "do NOT answer with a general map, outline or list of functions, and do NOT ask whether they want a plan. "
+              "Start the `roadmap` skill NOW: ask its first scoping question - exactly ONE question, as multiple choice via the AskUserQuestion tool (2-4 options labelled in words, never bare letters like A/B/C), never bundled with another question - "
+              "then draft the milestone outline. Skip this only if they say they just want to dive in, or the message is a quick question about one specific thing.")
 if s["mode"] in RULES:
     parts.append(RULES[s["mode"]] + DIAGRAM + (QUIZ_TRIGGER if not q else "") + ("" if rm else NO_ROADMAP))
     if rm:

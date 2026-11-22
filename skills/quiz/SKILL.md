@@ -7,6 +7,9 @@ description: Quiz the learner. Use when they say "quiz me", "test me", "check my
 
 Quizzing works because the learner has to *pull the answer out of their own head*. Anything that lets them skim the answer first defeats it.
 
+## Test-out mode
+If the roadmap skill asked for a test-out (`quiz start ... --testout`): difficulty never drops below 3, ask exactly one question per milestone concept, give no hints, no recall questions, and record each concept by its exact milestone name. The result decides whether the milestone is skipped.
+
 ## 1. Choose the topic
 - A roadmap milestone is active -> `quiz pick` lists its concepts first; quiz those, and record answers under the exact concept names from the milestone.
 - They named one ("quiz me on pointers") -> use it.

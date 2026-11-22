@@ -8,7 +8,7 @@ description: First-session onboarding for the Teaching Harness. Use when the lea
 **First check:** if the learner's first message already names a concrete goal ("I want to build a shell in C"), do NOT ask the broad question below.
 Use the `roadmap` skill straight away - it asks about their level and scope and marks them onboarded. Everything else here is for learners who haven't said what they want yet.
 
-Keep this to a short conversation, not a form. Ask **one question at a time**, and start with the widest one:
+Keep this to a short conversation, not a form. Ask **one question at a time** (use the AskUserQuestion picker when you have it, options labelled in words, never bare letters), and start with the widest one:
 
 1. "What do you want to get out of this?" (a project, a job skill, a language, a concept, 'just get better')
 2. Follow their answer. Ask only what you need to pick a first exercise: what they've built before, what language
