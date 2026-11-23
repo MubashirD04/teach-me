@@ -3,7 +3,7 @@
 Session-start context and skills fade or never load; this keeps behaviour structural."""
 import json, os, sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "bin"))
-from teachlib import load_state
+from teachlib import load_state, log_event
 from roadmap import load_roadmap, active_milestone, cname, cdesc, n_done
 
 s = load_state()
@@ -62,4 +62,5 @@ if q:
                  "Judge it, run `teach.py quiz answer pass|fail|partial` (first attempt only), give specific feedback WITHOUT dumping the full answer on a miss "
                  "(one retry with a smaller hint), then ask the next question one at a time. If they want to stop, run `teach.py quiz end` and summarise.")
 if parts:
+    log_event("reminder", mode=s["mode"], quiz=bool(q), roadmap=bool(rm), chars=sum(len(x) for x in parts))
     print(json.dumps({"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": " ".join(parts)}}))

@@ -33,3 +33,9 @@ Then just say what you want to learn. Run `bash tests/test_harness.sh` to check 
 2. Curriculum: pick the next task from weak concepts, using failing tests as exercises.
 3. Eval personas that try to extract answers, to measure guard + ladder robustness.
 4. Multi-learner profiles (`TEACH_HOME` already supports separate stores).
+
+## Per-project opt-in
+The plugin is inert in any project until you run `/teaching-harness:start` (or `teach.py mode learn`, or plan a goal with `/teaching-harness:roadmap`). Until then no hook speaks, the guard allows everything and no `.teach/` folder is created. To keep it out of a project entirely, install at project/local scope, or set `"teaching-harness@teaching-harness-dev": false` in that project's `.claude/settings.local.json`.
+
+## Dashboard (read-only)
+`/teaching-harness:dashboard` (or `teach.py dashboard --open`) writes `.teach/dashboard.html`: roadmap, concept heat table, activity, and what the harness injects/blocks. It is rebuilt automatically after any `teach.py` command and at session start. `teach.py export` prints the same data as JSON (schema 1). Opening it inside VS Code (Simple Browser / Live Preview) is untested.

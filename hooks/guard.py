@@ -9,7 +9,7 @@ the model can be talked out of.
 import json, os, re, shlex, sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "bin"))
 from pathlib import Path
-from teachlib import load_state, project_dir
+from teachlib import load_state, project_dir, log_event
 
 WRITE_TOOLS = {"Write", "Edit", "MultiEdit", "NotebookEdit"}
 BASH_WRITE = re.compile(
@@ -61,6 +61,22 @@ def inside_teach(path: str) -> bool:
         return False
 
 
+def decide(tool, inp):
+    """Pure policy for learn mode: returns a denial reason, or None if the call is allowed."""
+    inp = inp or {}
+    if tool in WRITE_TOOLS:
+        path = inp.get("file_path") or inp.get("notebook_path") or ""
+        return None if inside_teach(path) else DENY
+    if tool == "Bash":
+        cmd = inp.get("command", "")
+        if is_teach_cli(cmd):
+            return None
+        cleaned = re.sub(r"\d*>&\d+|&?>\s*/dev/null|\d*>\s*/dev/null", "", cmd)
+        if BASH_WRITE.search(cleaned) and ".teach/" not in cmd:
+            return DENY + " (Blocked a shell command that looks like it modifies files.)"
+    return None
+
+
 def main():
     try:
         ev = json.load(sys.stdin)
@@ -69,17 +85,10 @@ def main():
     if load_state()["mode"] != "learn":
         return
     tool, inp = ev.get("tool_name"), ev.get("tool_input") or {}
-    if tool in WRITE_TOOLS:
-        path = inp.get("file_path") or inp.get("notebook_path") or ""
-        if not inside_teach(path):
-            deny()
-    elif tool == "Bash":
-        cmd = inp.get("command", "")
-        if is_teach_cli(cmd):
-            return
-        cleaned = re.sub(r"\d*>&\d+|&?>\s*/dev/null|\d*>\s*/dev/null", "", cmd)
-        if BASH_WRITE.search(cleaned) and ".teach/" not in cmd:
-            deny(DENY + " (Blocked a shell command that looks like it modifies files.)")
+    reason = decide(tool, inp)
+    if reason:
+        log_event("guard_deny", tool=tool, detail=str(inp.get("file_path") or inp.get("notebook_path") or inp.get("command") or "")[:200])
+        deny(reason)
 
 
 if __name__ == "__main__":

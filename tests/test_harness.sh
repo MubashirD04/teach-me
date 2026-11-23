@@ -96,6 +96,7 @@ grep -q "^> \*\*First step" "$CLAUDE_PROJECT_DIR/.teach/ROADMAP.md" && ok "ROADM
 # routing must not depend on onboarding state, and the reminder must be imperative
 TH="$(mktemp -d)"; PD="$(mktemp -d)"
 CLAUDE_PROJECT_DIR="$PD" TEACH_HOME="$TH" python3 "$ROOT/bin/teach.py" set onboarded true >/dev/null
+CLAUDE_PROJECT_DIR="$PD" TEACH_HOME="$TH" python3 "$ROOT/bin/teach.py" mode learn >/dev/null
 CLAUDE_PROJECT_DIR="$PD" TEACH_HOME="$TH" python3 "$ROOT/hooks/session_start.py" | grep -q "start the .roadmap. skill immediately" && ok "routing applies even when onboarded" || bad "routing when onboarded"
 CLAUDE_PROJECT_DIR="$PD" TEACH_HOME="$TH" python3 "$ROOT/bin/teach.py" mode learn >/dev/null
 CLAUDE_PROJECT_DIR="$PD" TEACH_HOME="$TH" python3 "$ROOT/hooks/prompt_reminder.py" | grep -q "do NOT ask whether they want a plan" && ok "reminder: start roadmap, don't ask" || bad "reminder: start roadmap"
@@ -137,4 +138,21 @@ T roadmap done 1 | grep -q "already skipped" && ok "cannot done a skipped one" |
 T roadmap skip 2 --force --demonstrated "insisted" | grep -q "tested out" && ok "force skip works" || bad "force skip"
 python3 -c "import json;m=json.load(open('$CLAUDE_PROJECT_DIR/.teach/roadmap.json'))['milestones'];assert m[1]['tested_out']['forced'] and not m[0]['tested_out']['forced']" && ok "forced flag recorded" || bad "forced flag recorded"
 T quiz end >/dev/null
+# ---- opt-in: inactive projects are inert
+IP="$(mktemp -d)"; IH="$(mktemp -d)"
+IT() { CLAUDE_PROJECT_DIR="$IP" TEACH_HOME="$IH" python3 "$@"; }
+echo '{"tool_name":"Write","tool_input":{"file_path":"app.c"}}' | IT "$ROOT/hooks/guard.py" | grep -q deny && bad "inactive project guard allows" || ok "inactive project guard allows"
+[ -z "$(IT "$ROOT/hooks/session_start.py")" ] && ok "inactive session_start silent" || bad "inactive session_start silent"
+[ -z "$(echo '{}' | IT "$ROOT/hooks/prompt_reminder.py")" ] && ok "inactive reminder silent" || bad "inactive reminder silent"
+echo '{"tool_input":{"command":"python3 teach.py status"}}' | IT "$ROOT/hooks/refresh_dashboard.py"
+IT "$ROOT/bin/teach.py" status >/dev/null
+[ ! -e "$IP/.teach" ] && ok "inactive project: no .teach created" || bad "inactive project: no .teach created"
+IT "$ROOT/bin/teach.py" mode learn >/dev/null; [ -f "$IP/.teach/state.json" ] && ok "mode learn activates project" || bad "mode learn activates"
+# ---- export + dashboard
+IT "$ROOT/bin/teach.py" export | python3 -c "import json,sys;d=json.load(sys.stdin);assert d['schema']==1 and all(k in d for k in ('state','roadmap','concepts','events','harness','quiz','diagrams'));assert d['harness']['guard_samples']" && ok "export schema" || bad "export schema"
+echo '{"tool_input":{"command":"python3 x/teach.py concept a fail"}}' | IT "$ROOT/hooks/refresh_dashboard.py"
+[ -f "$IP/.teach/dashboard.html" ] && ok "refresh hook writes dashboard" || bad "refresh hook writes dashboard"
+grep -Eq "https?://" "$IP/.teach/dashboard.html" && bad "dashboard has external URL" || ok "dashboard self-contained"
+IT "$ROOT/bin/teach.py" roadmap init "x</script><b>" >/dev/null; IT "$ROOT/bin/teach.py" dashboard >/dev/null
+[ "$(grep -c '</script><b>' "$IP/.teach/dashboard.html")" = 0 ] && ok "dashboard escapes </script>" || bad "dashboard escapes </script>"
 echo "---- $pass passed, $fail failed"; [ $fail -eq 0 ]

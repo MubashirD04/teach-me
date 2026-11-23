@@ -16,16 +16,21 @@
   teach.py quiz answer pass|fail|partial [CONCEPT]   # record the FIRST attempt at a question
   teach.py quiz status | end
   teach.py roadmap init "goal" | add ... | edit N ... | remove N | status | start N | done N | skip N --demonstrated "..." | lint | park "idea" | parked
+  teach.py export                   # JSON snapshot (schema 1) of state, roadmap, concepts, events
+  teach.py dashboard [--open]       # write .teach/dashboard.html (read-only visual overview)
   teach.py diagram "title"          # safe path for an HTML visual aid under .teach/diagrams/
 """
 import sys, json
 sys.path.insert(0, __import__("os").path.dirname(__file__))
 from teachlib import *
+from export import cmd_export, cmd_dashboard
 from roadmap import cmd_roadmap, load_roadmap, active_milestone, cname
 
 
 def cmd_status(_):
     s, p = load_state(), load_learner()
+    if not is_active():
+        print("NOT ACTIVE in this project (the harness is inert here). Turn it on with `mode learn` (or /teaching-harness:start).")
     print(f"mode: {s['mode']}")
     print(f"profile file: {home_dir() / 'learner.json'}  (onboarded: {p['onboarded']})")
     print(f"task: {s['task'] or '(none)'}")
@@ -130,7 +135,7 @@ def _concept(p, name):
 
 
 def _priority(c):
-    return (c["fail"] - c["pass"]) * 2 + c["hints_needed"] + min(days_since(c.get("last_seen")), 30) / 10
+    return concept_priority(c)
 
 
 def cmd_quiz(a):
@@ -215,9 +220,11 @@ def cmd_profile(_):
 
 
 CMDS = {"status": cmd_status, "mode": cmd_mode, "task": cmd_task, "attempt": cmd_attempt,
-        "hint": cmd_hint, "concept": cmd_concept, "goal": cmd_goal, "set": cmd_set, "profile": cmd_profile, "diagram": cmd_diagram, "quiz": cmd_quiz, "roadmap": cmd_roadmap}
+        "hint": cmd_hint, "concept": cmd_concept, "goal": cmd_goal, "set": cmd_set, "profile": cmd_profile, "diagram": cmd_diagram, "quiz": cmd_quiz, "roadmap": cmd_roadmap, "export": cmd_export, "dashboard": cmd_dashboard}
 
 if __name__ == "__main__":
     if len(sys.argv) < 2 or sys.argv[1] not in CMDS:
         print(__doc__); sys.exit(1)
+    if sys.argv[1] not in ("export", "dashboard", "status", "profile"):
+        log_event("cli", cmd=" ".join(sys.argv[1:])[:200])
     sys.exit(CMDS[sys.argv[1]](sys.argv[2:]) or 0)

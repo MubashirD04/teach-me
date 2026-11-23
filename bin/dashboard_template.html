@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Teaching Harness</title>
+<style>
+:root{--bg:#fff;--fg:#0a0a0a;--mut:#6f6f6f;--card:rgba(255,255,255,.88);--bd:#0a0a0a;--hair:#d9d9d9;--ok:#0a0a0a;--warn:#0a0a0a;--bad:#0a0a0a;--acc:#0a0a0a;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.55 -apple-system,"Helvetica Neue",Helvetica,Arial,sans-serif;color:var(--fg);letter-spacing:-.005em;
+background-color:var(--bg);
+background-image:radial-gradient(rgba(0,0,0,.16) 1px,transparent 1.2px),repeating-linear-gradient(45deg,rgba(0,0,0,.035) 0 1px,transparent 1px 5px);
+background-size:18px 18px,auto;background-attachment:fixed}
+header{display:flex;gap:10px;align-items:center;padding:18px 32px;border-bottom:2px solid var(--bd);background:var(--bg);flex-wrap:wrap}
+header h1{font-size:15px;margin:0;font-weight:700;letter-spacing:.14em;text-transform:uppercase}
+.pill{padding:2px 10px;border:1px solid var(--bd);font:11px var(--mono);text-transform:uppercase;letter-spacing:.06em;background:var(--bg)}
+#mode{background:var(--fg);color:var(--bg)}
+nav{display:flex;gap:0;padding:0 32px;border-bottom:1px solid var(--bd);background:var(--bg)}
+nav button{background:none;border:0;border-bottom:3px solid transparent;margin-bottom:-1px;padding:12px 18px 10px 0;margin-right:18px;color:var(--mut);cursor:pointer;font:600 12px var(--mono);text-transform:uppercase;letter-spacing:.12em}
+nav button:hover{color:var(--fg)}nav button.on{color:var(--fg);border-color:var(--fg)}
+main{padding:32px;max-width:1000px;margin:auto}
+.card{background:var(--card);border:1px solid var(--bd);padding:16px 20px;margin-bottom:14px;box-shadow:4px 4px 0 var(--fg);backdrop-filter:blur(2px)}
+.mut{color:var(--mut)}.st{font-weight:700;font-size:15px;letter-spacing:-.01em}
+.bar{height:10px;border:1px solid var(--bd);margin-top:10px;background:repeating-linear-gradient(90deg,transparent 0 6px,rgba(0,0,0,.08) 6px 7px)}
+.bar>i{display:block;height:100%;background:var(--fg)}
+.chip{display:inline-block;padding:1px 9px;margin:3px 5px 3px 0;font:11px var(--mono);border:1px solid var(--bd);background:var(--bg)}
+.g{background:var(--fg);color:var(--bg)}.y{background:var(--bg)}
+.r{background:repeating-linear-gradient(135deg,#fff 0 3px,#0a0a0a 3px 4px);text-decoration:line-through;text-decoration-thickness:1px;font-weight:700}
+.r{color:#0a0a0a;box-shadow:inset 0 0 0 20px rgba(255,255,255,.82)}
+table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:7px 8px;border-bottom:1px solid var(--hair);vertical-align:top}
+th{font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.12em;color:var(--mut);border-bottom:1px solid var(--bd)}
+pre{white-space:pre-wrap;background:var(--bg);border:1px solid var(--bd);padding:12px;font:12px/1.5 var(--mono)}
+h2{font:700 11px var(--mono);margin:30px 0 10px;text-transform:uppercase;letter-spacing:.16em;display:flex;align-items:center;gap:12px}
+h2:after{content:"";flex:1;height:1px;background:var(--bd)}
+.done,.active{font-weight:700}.todo{color:var(--mut)}.skipped{text-decoration:line-through;color:var(--mut)}
+.active:before{content:"\25B6  "}.done:before{content:"\2713  "}
+label{margin-left:auto;font:11px var(--mono);color:var(--mut);text-transform:uppercase;letter-spacing:.06em;cursor:pointer}
+input[type=checkbox]{accent-color:#0a0a0a}
+a{color:var(--fg);text-decoration:underline;text-underline-offset:3px}
+::selection{background:var(--fg);color:var(--bg)}
+</style></head><body>
+<header><h1 id="proj"></h1><span class="pill" id="mode"></span><span class="pill" id="task"></span><span class="mut" id="gen"></span>
+<label><input type="checkbox" id="auto"> auto-refresh 15s</label></header>
+<nav id="nav"></nav><main id="main"></main>
+<script id="data" type="application/json">/*DATA*/null</script>
+<script>
+var D=JSON.parse(document.getElementById('data').textContent.replace(/^\/\*DATA\*\//,'')||'null');
+if(!D){D=JSON.parse(document.getElementById('data').textContent)}
+function el(t,c,x){var e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e}
+function add(p){for(var i=1;i<arguments.length;i++)if(arguments[i])p.appendChild(arguments[i]);return p}
+var TABS=['Roadmap','Concepts','Activity','Harness'];
+function tab(){return decodeURIComponent((location.hash||'#Roadmap').slice(1))}
+function mastery(c){var n=c.pass+c.fail;return n==0?'y':(c.fail>=c.pass?'r':(c.pass>=2&&c.fail==0?'g':'y'))}
+function chip(name,m){return el('span','chip '+m,name)}
+function nm(c){return String(c).split('|')[0].trim()}
+function roadmap(m){
+ var r=D.roadmap;if(!r){m.appendChild(el('p','mut','No roadmap yet. Ask the agent for one (/teaching-harness:roadmap).'));return}
+ var ms=r.milestones,done=ms.filter(function(x){return x.status=='done'||x.status=='skipped'}).length;
+ var c=add(el('div','card'),el('div','st','Goal: '+r.goal),el('div','mut',done+' of '+ms.length+' milestones complete'));
+ var b=el('div','bar');var i=el('i');i.style.width=(ms.length?done/ms.length*100:0)+'%';b.appendChild(i);c.appendChild(b);m.appendChild(c);
+ var cm={};D.concepts.forEach(function(x){cm[x.name.toLowerCase()]=x});
+ ms.forEach(function(x,k){var cd=el('div','card');
+  var t=el('div','st',(k+1)+'. '+x.title+'  ['+x.status+']');t.className+=' '+x.status;cd.appendChild(t);
+  cd.appendChild(el('div','mut',x.outcome||''));
+  cd.appendChild(add(el('div'),el('b',null,'Done when: '),document.createTextNode(x.done_when||'')));
+  var ch=el('div');(x.concepts||[]).forEach(function(q){var n=nm(q),e=cm[n.toLowerCase()];ch.appendChild(chip(n,e?mastery(e):'y'))});cd.appendChild(ch);
+  if(x.status=='skipped'&&x.tested_out){cd.appendChild(el('div','mut','Tested out'+(x.tested_out.forced?' (forced)':'')+': '+(x.tested_out.demonstrated||x.tested_out.evidence||'')))}
+  m.appendChild(cd)});
+ if((r.parked||[]).length){m.appendChild(el('h2',null,'Parked ideas'));var u=el('ul');r.parked.forEach(function(p){u.appendChild(el('li',null,typeof p=='string'?p:(p.idea||JSON.stringify(p))))});m.appendChild(u)}}
+function concepts(m){
+ if(!D.concepts.length){m.appendChild(el('p','mut','No concept evidence recorded yet.'));return}
+ var t=el('table'),h=el('tr');['Concept','Pass','Fail','Hints','Days since','Priority'].forEach(function(x){h.appendChild(el('th',null,x))});t.appendChild(h);
+ D.concepts.forEach(function(c){var r=el('tr');var td=el('td');td.appendChild(chip(c.name,mastery(c)));r.appendChild(td);
+  [c.pass,c.fail,c.hints_needed,c.days_since,c.priority].forEach(function(v){r.appendChild(el('td',null,v))});t.appendChild(r)});
+ m.appendChild(add(el('div','card'),t));m.appendChild(el('p','mut','Priority = weak, hint-heavy or stale concepts first. Red = failing more than passing.'))}
+function activity(m){
+ m.appendChild(el('h2',null,'Quiz history'));var q=D.quiz.history;
+ if(!q.length)m.appendChild(el('p','mut','No quizzes yet.'));else{var t=el('table');q.slice().reverse().forEach(function(x){var r=el('tr');[x.at||'',x.topic||'',(x.results||[]).map(function(r){return typeof r=='string'?r:JSON.stringify(r)}).join(', ')].forEach(function(v){r.appendChild(el('td',null,v))});t.appendChild(r)});m.appendChild(add(el('div','card'),t))}
+ m.appendChild(el('h2',null,'Diagrams'));
+ if(!D.diagrams.length)m.appendChild(el('p','mut','None.'));D.diagrams.forEach(function(d){var a=el('a',null,d.title);a.href=String(d.path).replace(/^\.teach\//,'');a.target='_blank';a.rel='noopener';m.appendChild(add(el('div'),a))});
+ m.appendChild(el('h2',null,'Recent events'));var t2=el('table');D.events.slice().reverse().slice(0,80).forEach(function(e){var r=el('tr');var rest=Object.keys(e).filter(function(k){return k!='t'&&k!='kind'}).map(function(k){return k+'='+e[k]}).join(' ');[e.t,e.kind,rest].forEach(function(v){r.appendChild(el('td',null,v))});t2.appendChild(r)});m.appendChild(add(el('div','card'),t2))}
+function harness(m){var H=D.harness;
+ m.appendChild(add(el('div','card'),el('div',null,'Mode: '+D.state.mode+' | hint level '+D.state.hint_level+' | attempts '+D.state.attempts),el('div','mut','Profile: '+H.profile_path),el('div','mut','Plugin: '+H.plugin_root)));
+ m.appendChild(el('h2',null,'Injected at session start'));m.appendChild(el('pre',null,H.session_start_text||'(nothing: inactive or off)'));
+ m.appendChild(el('h2',null,'Injected every prompt'));m.appendChild(el('pre',null,H.prompt_reminder_text||'(nothing)'));
+ m.appendChild(el('h2',null,'Guard in learn mode: what would be allowed'));var t=el('table');
+ H.guard_samples.forEach(function(g){var r=el('tr');r.appendChild(el('td',null,g.tool));r.appendChild(el('td',null,g.input));var a=el('td',g.allowed?'done':'',g.allowed?'\u2713 allowed':'\u2715 blocked');if(!g.allowed)a.style.textDecoration='line-through';r.appendChild(a);t.appendChild(r)});m.appendChild(add(el('div','card'),t));
+ m.appendChild(el('h2',null,'Hooks'));H.hooks.forEach(function(h){m.appendChild(el('div','mut',h.event+(h.matcher?'  ('+h.matcher+')':'')))})}
+function render(){
+ document.getElementById('proj').textContent=D.project;document.getElementById('mode').textContent='mode: '+D.state.mode;
+ document.getElementById('task').textContent=D.state.task?'task: '+D.state.task:'no task';document.getElementById('gen').textContent='updated '+D.generated;
+ var n=document.getElementById('nav');n.textContent='';var cur=tab();
+ TABS.forEach(function(t){var b=el('button',t==cur?'on':'',t);b.onclick=function(){location.hash=t;render()};n.appendChild(b)});
+ var m=document.getElementById('main');m.textContent='';
+ ({Roadmap:roadmap,Concepts:concepts,Activity:activity,Harness:harness}[cur]||roadmap)(m)}
+render();
+var A=document.getElementById('auto');try{A.checked=localStorage.getItem('th_auto')=='1'}catch(e){}
+A.onchange=function(){try{localStorage.setItem('th_auto',A.checked?'1':'0')}catch(e){}};
+setInterval(function(){if(A.checked){try{sessionStorage.setItem('y',scrollY)}catch(e){}location.reload()}},15000);
+try{var y=sessionStorage.getItem('y');if(y)scrollTo(0,+y)}catch(e){}
+</script></body></html>

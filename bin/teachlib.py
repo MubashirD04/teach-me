@@ -22,10 +22,17 @@ def project_dir() -> Path:
     return Path(os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd())
 
 
-def teach_dir() -> Path:
+def teach_dir(create: bool = True) -> Path:
+    """<project>/.teach. Pass create=False for reads so inactive projects are never touched."""
     d = project_dir() / ".teach"
-    d.mkdir(parents=True, exist_ok=True)
+    if create:
+        d.mkdir(parents=True, exist_ok=True)
     return d
+
+
+def is_active() -> bool:
+    """A project has opted in to the harness once .teach/state.json exists."""
+    return (project_dir() / ".teach" / "state.json").exists()
 
 
 def home_dir() -> Path:
@@ -48,8 +55,9 @@ def _save(path: Path, data):
 
 
 def load_state():
-    s = _load(teach_dir() / "state.json", {})
-    s.setdefault("mode", "learn")
+    raw = _load(teach_dir(False) / "state.json", None)
+    s = raw or {}
+    s.setdefault("mode", "learn" if raw is not None else "off")   # not opted in => inert
     s.setdefault("task", None)
     s.setdefault("hint_level", 0)
     s.setdefault("attempts", 0)
@@ -89,3 +97,22 @@ def days_since(iso):
         return (time.time() - time.mktime(time.strptime(iso, "%Y-%m-%dT%H:%M:%S"))) / 86400
     except Exception:
         return 30.0
+
+
+def concept_priority(c):
+    """Higher = more worth practising: weak, needed hints, or stale."""
+    return (c["fail"] - c["pass"]) * 2 + c["hints_needed"] + min(days_since(c.get("last_seen")), 30) / 10
+
+
+def log_event(kind, **data):
+    """Append one line to .teach/events.jsonl (only for opted-in projects; never raises)."""
+    if os.environ.get("TEACH_NO_LOG") or not is_active():
+        return
+    try:
+        p = teach_dir() / "events.jsonl"
+        with p.open("a") as f:
+            f.write(json.dumps({"t": now(), "kind": kind, **data}) + "\n")
+        if p.stat().st_size > 500_000:
+            p.write_text("\n".join(p.read_text().splitlines()[-1000:]) + "\n")
+    except Exception:
+        pass

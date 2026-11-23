@@ -18,7 +18,7 @@ ICON = {"done": "[x]", "skipped": "[~]", "active": "[>]", "todo": "[ ]"}
 
 # ---------------------------------------------------------------- storage / helpers
 def load_roadmap():
-    return _load(teach_dir() / "roadmap.json", None)
+    return _load(teach_dir(False) / "roadmap.json", None)
 
 
 def save_roadmap(r):
@@ -175,6 +175,8 @@ def cmd_roadmap(a):
                 print("a roadmap already exists (use --force to replace it)"); return 1
             r = {"goal": goal, "milestones": [], "parked": [], "created": now()}
             save_roadmap(r)
+            if not is_active():            # planning a goal opts this project in
+                st = load_state(); st["mode"] = "learn"; save_state(st)
             p = load_learner()
             if goal not in p["goals"]:
                 p["goals"].append(goal)
