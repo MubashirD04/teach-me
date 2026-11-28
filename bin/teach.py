@@ -17,12 +17,15 @@
   teach.py quiz status | end
   teach.py roadmap init "goal" | add ... | edit N ... | remove N | status | start N | done N | skip N --demonstrated "..." | lint | park "idea" | parked
   teach.py export                   # JSON snapshot (schema 1) of state, roadmap, concepts, events
+  teach.py pack [FILE]              # save the current subject (roadmap, progress, concepts, diagrams) to one portable file
+  teach.py unpack FILE [--force]    # load a pack on another device / project
   teach.py dashboard [--open]       # write .teach/dashboard.html (read-only visual overview)
   teach.py diagram "title"          # safe path for an HTML visual aid under .teach/diagrams/
 """
 import sys, json
 sys.path.insert(0, __import__("os").path.dirname(__file__))
 from teachlib import *
+from pack import cmd_pack, cmd_unpack
 from export import cmd_export, cmd_dashboard
 from roadmap import cmd_roadmap, load_roadmap, active_milestone, cname
 
@@ -220,7 +223,7 @@ def cmd_profile(_):
 
 
 CMDS = {"status": cmd_status, "mode": cmd_mode, "task": cmd_task, "attempt": cmd_attempt,
-        "hint": cmd_hint, "concept": cmd_concept, "goal": cmd_goal, "set": cmd_set, "profile": cmd_profile, "diagram": cmd_diagram, "quiz": cmd_quiz, "roadmap": cmd_roadmap, "export": cmd_export, "dashboard": cmd_dashboard}
+        "hint": cmd_hint, "concept": cmd_concept, "goal": cmd_goal, "set": cmd_set, "profile": cmd_profile, "diagram": cmd_diagram, "quiz": cmd_quiz, "roadmap": cmd_roadmap, "export": cmd_export, "pack": cmd_pack, "unpack": cmd_unpack, "dashboard": cmd_dashboard}
 
 if __name__ == "__main__":
     if len(sys.argv) < 2 or sys.argv[1] not in CMDS:

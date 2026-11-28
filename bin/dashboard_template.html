@@ -2,11 +2,12 @@
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Teaching Harness</title>
 <style>
-:root{--bg:#fff;--fg:#0a0a0a;--mut:#6f6f6f;--card:rgba(255,255,255,.88);--bd:#0a0a0a;--hair:#d9d9d9;--ok:#0a0a0a;--warn:#0a0a0a;--bad:#0a0a0a;--acc:#0a0a0a;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+:root{--bg:#fff;--fg:#0a0a0a;--mut:#6f6f6f;--card:rgba(255,255,255,.88);--bd:#0a0a0a;--hair:#d9d9d9;--ok:#0a0a0a;--warn:#0a0a0a;--bad:#0a0a0a;--acc:#0a0a0a;--dot:rgba(0,0,0,.16);--hatch:rgba(0,0,0,.035);--tick:rgba(0,0,0,.08);--wash:rgba(255,255,255,.82);--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+[data-theme=dark]{--bg:#0b0b0b;--fg:#f2f2f2;--mut:#9a9a9a;--card:rgba(14,14,14,.88);--bd:#f2f2f2;--hair:#2e2e2e;--ok:#f2f2f2;--warn:#f2f2f2;--bad:#f2f2f2;--acc:#f2f2f2;--dot:rgba(255,255,255,.14);--hatch:rgba(255,255,255,.04);--tick:rgba(255,255,255,.12);--wash:rgba(11,11,11,.82)}
 *{box-sizing:border-box}
 body{margin:0;font:14px/1.55 -apple-system,"Helvetica Neue",Helvetica,Arial,sans-serif;color:var(--fg);letter-spacing:-.005em;
 background-color:var(--bg);
-background-image:radial-gradient(rgba(0,0,0,.16) 1px,transparent 1.2px),repeating-linear-gradient(45deg,rgba(0,0,0,.035) 0 1px,transparent 1px 5px);
+background-image:radial-gradient(var(--dot) 1px,transparent 1.2px),repeating-linear-gradient(45deg,var(--hatch) 0 1px,transparent 1px 5px);
 background-size:18px 18px,auto;background-attachment:fixed}
 header{display:flex;gap:10px;align-items:center;padding:18px 32px;border-bottom:2px solid var(--bd);background:var(--bg);flex-wrap:wrap}
 header h1{font-size:15px;margin:0;font-weight:700;letter-spacing:.14em;text-transform:uppercase}
@@ -18,12 +19,12 @@ nav button:hover{color:var(--fg)}nav button.on{color:var(--fg);border-color:var(
 main{padding:32px;max-width:1000px;margin:auto}
 .card{background:var(--card);border:1px solid var(--bd);padding:16px 20px;margin-bottom:14px;box-shadow:4px 4px 0 var(--fg);backdrop-filter:blur(2px)}
 .mut{color:var(--mut)}.st{font-weight:700;font-size:15px;letter-spacing:-.01em}
-.bar{height:10px;border:1px solid var(--bd);margin-top:10px;background:repeating-linear-gradient(90deg,transparent 0 6px,rgba(0,0,0,.08) 6px 7px)}
+.bar{height:10px;border:1px solid var(--bd);margin-top:10px;background:repeating-linear-gradient(90deg,transparent 0 6px,var(--tick) 6px 7px)}
 .bar>i{display:block;height:100%;background:var(--fg)}
 .chip{display:inline-block;padding:1px 9px;margin:3px 5px 3px 0;font:11px var(--mono);border:1px solid var(--bd);background:var(--bg)}
 .g{background:var(--fg);color:var(--bg)}.y{background:var(--bg)}
-.r{background:repeating-linear-gradient(135deg,#fff 0 3px,#0a0a0a 3px 4px);text-decoration:line-through;text-decoration-thickness:1px;font-weight:700}
-.r{color:#0a0a0a;box-shadow:inset 0 0 0 20px rgba(255,255,255,.82)}
+.r{background:repeating-linear-gradient(135deg,var(--bg) 0 3px,var(--fg) 3px 4px);text-decoration:line-through;text-decoration-thickness:1px;font-weight:700}
+.r{color:var(--fg);box-shadow:inset 0 0 0 20px var(--wash)}
 table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:7px 8px;border-bottom:1px solid var(--hair);vertical-align:top}
 th{font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.12em;color:var(--mut);border-bottom:1px solid var(--bd)}
 pre{white-space:pre-wrap;background:var(--bg);border:1px solid var(--bd);padding:12px;font:12px/1.5 var(--mono)}
@@ -32,12 +33,14 @@ h2:after{content:"";flex:1;height:1px;background:var(--bd)}
 .done,.active{font-weight:700}.todo{color:var(--mut)}.skipped{text-decoration:line-through;color:var(--mut)}
 .active:before{content:"\25B6  "}.done:before{content:"\2713  "}
 label{margin-left:auto;font:11px var(--mono);color:var(--mut);text-transform:uppercase;letter-spacing:.06em;cursor:pointer}
-input[type=checkbox]{accent-color:#0a0a0a}
+input[type=checkbox]{accent-color:var(--fg)}
+#theme{background:var(--bg);color:var(--fg);border:1px solid var(--bd);padding:2px 10px;font:11px var(--mono);text-transform:uppercase;letter-spacing:.06em;cursor:pointer}
+#theme:hover{background:var(--fg);color:var(--bg)}
 a{color:var(--fg);text-decoration:underline;text-underline-offset:3px}
 ::selection{background:var(--fg);color:var(--bg)}
-</style></head><body>
+</style><script>try{var t=localStorage.getItem('th_theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}</script></head><body>
 <header><h1 id="proj"></h1><span class="pill" id="mode"></span><span class="pill" id="task"></span><span class="mut" id="gen"></span>
-<label><input type="checkbox" id="auto"> auto-refresh 15s</label></header>
+<label><input type="checkbox" id="auto"> auto-refresh 15s</label><button id="theme" title="Toggle dark mode"></button></header>
 <nav id="nav"></nav><main id="main"></main>
 <script id="data" type="application/json">/*DATA*/null</script>
 <script>
@@ -91,6 +94,10 @@ function render(){
  var m=document.getElementById('main');m.textContent='';
  ({Roadmap:roadmap,Concepts:concepts,Activity:activity,Harness:harness}[cur]||roadmap)(m)}
 render();
+var TB=document.getElementById('theme');
+function paintTheme(){var d=document.documentElement.getAttribute('data-theme')=='dark';TB.textContent=d?'\u2600 light':'\u263E dark'}
+TB.onclick=function(){var d=document.documentElement.getAttribute('data-theme')=='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',d);try{localStorage.setItem('th_theme',d)}catch(e){}paintTheme()};
+paintTheme();
 var A=document.getElementById('auto');try{A.checked=localStorage.getItem('th_auto')=='1'}catch(e){}
 A.onchange=function(){try{localStorage.setItem('th_auto',A.checked?'1':'0')}catch(e){}};
 setInterval(function(){if(A.checked){try{sessionStorage.setItem('y',scrollY)}catch(e){}location.reload()}},15000);

@@ -39,3 +39,6 @@ The plugin is inert in any project until you run `/teaching-harness:start` (or `
 
 ## Dashboard (read-only)
 `/teaching-harness:dashboard` (or `teach.py dashboard --open`) writes `.teach/dashboard.html`: roadmap, concept heat table, activity, and what the harness injects/blocks. It is rebuilt automatically after any `teach.py` command and at session start. `teach.py export` prints the same data as JSON (schema 1). Opening it inside VS Code (Simple Browser / Live Preview) is untested.
+
+## Moving a subject to another device
+`/teaching-harness:pack` (or `teach.py pack [file]`) saves the current subject (roadmap, progress, quiz history, diagrams, your concept evidence for that subject, goals) to one file, `teach-<subject>.pack.json` in the project root. Copy it over (git, cloud drive, USB) and run `/teaching-harness:unpack <file>` in the project on the other device. It activates the harness there and merges concepts (the more recently seen side wins; local-only concepts are kept). If that project already has a roadmap it refuses unless you pass `--force`, which backs the old one up to `.teach/backup/`. Packs contain your learning data, so don't publish them. Add `*.pack.json` to `.gitignore` if the project is public.

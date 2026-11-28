@@ -155,4 +155,25 @@ echo '{"tool_input":{"command":"python3 x/teach.py concept a fail"}}' | IT "$ROO
 grep -Eq "https?://" "$IP/.teach/dashboard.html" && bad "dashboard has external URL" || ok "dashboard self-contained"
 IT "$ROOT/bin/teach.py" roadmap init "x</script><b>" >/dev/null; IT "$ROOT/bin/teach.py" dashboard >/dev/null
 [ "$(grep -c '</script><b>' "$IP/.teach/dashboard.html")" = 0 ] && ok "dashboard escapes </script>" || bad "dashboard escapes </script>"
+# ---- pack / unpack
+PA="$(mktemp -d)"; PAH="$(mktemp -d)"; PB="$(mktemp -d)"; PBH="$(mktemp -d)"
+A() { CLAUDE_PROJECT_DIR="$PA" TEACH_HOME="$PAH" python3 "$@"; }; B() { CLAUDE_PROJECT_DIR="$PB" TEACH_HOME="$PBH" python3 "$@"; }
+A "$ROOT/bin/teach.py" pack 2>&1 | grep -q "No roadmap" && ok "pack without roadmap refused" || bad "pack without roadmap refused"
+A "$ROOT/bin/teach.py" roadmap init "learn pointers" >/dev/null
+A "$ROOT/bin/teach.py" roadmap add --title "Pointer basics" --outcome "Use a pointer to change a variable" --done-when "Run \`./p\` and it prints 5" --concepts "pointer | an address that holds a value" --first-step "Write down what you think \`int *p\` means. Then compile and print it, which part surprised you?" --look-up "man 3 printf" >/dev/null 2>&1
+A "$ROOT/bin/teach.py" concept pointer pass >/dev/null; A "$ROOT/bin/teach.py" concept unrelated fail >/dev/null
+A "$ROOT/bin/teach.py" diagram "ptr map" >/dev/null; echo "<h1>d</h1>" > "$PA/.teach/diagrams/ptr-map.html"
+PF="$PA/out.pack.json"; A "$ROOT/bin/teach.py" pack "$PF" >/dev/null
+python3 -c "import json;d=json.load(open('$PF'));assert d['format']=='teaching-harness-pack' and 'unrelated' not in d['concepts'] and d['diagrams'][0]['html']=='<h1>d</h1>\n'" && ok "pack content (relevant concepts only)" || bad "pack content"
+B "$ROOT/bin/teach.py" unpack "$PF" | grep -q "Loaded" && ok "unpack loads" || bad "unpack loads"
+[ -f "$PB/.teach/state.json" ] && [ -f "$PB/.teach/diagrams/ptr-map.html" ] && ok "unpack activates + restores diagram" || bad "unpack activates + restores diagram"
+python3 -c "import json;d=json.load(open('$PBH/learner.json'));assert 'pointer' in d['concepts'] and 'unrelated' not in d['concepts']" && ok "unpack merges concepts" || bad "unpack merges concepts"
+B "$ROOT/bin/teach.py" unpack "$PF" 2>&1 | grep -q "already has a roadmap" && ok "unpack refuses overwrite" || bad "unpack refuses overwrite"
+B "$ROOT/bin/teach.py" unpack "$PF" --force >/dev/null; ls "$PB/.teach/backup"/roadmap-*.json >/dev/null 2>&1 && ok "force backs up" || bad "force backs up"
+echo '{"format":"x"}' > "$PB/bad.json"; B "$ROOT/bin/teach.py" unpack "$PB/bad.json" 2>&1 | grep -q "Not a valid" && ok "invalid pack rejected" || bad "invalid pack rejected"
+python3 - <<PY
+import json;d=json.load(open("$PF"));d["diagrams"][0]["file"]="../../evil.html";json.dump(d,open("$PF","w"))
+PY
+PC="$(mktemp -d)"; CLAUDE_PROJECT_DIR="$PC" TEACH_HOME="$(mktemp -d)" python3 "$ROOT/bin/teach.py" unpack "$PF" >/dev/null
+[ ! -e "$PC/evil.html" ] && [ ! -e "$PC/../evil.html" ] && ok "pack path traversal sanitised" || bad "pack path traversal sanitised"
 echo "---- $pass passed, $fail failed"; [ $fail -eq 0 ]
